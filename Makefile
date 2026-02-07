@@ -1,0 +1,16 @@
+.PHONY: all build run test clean
+
+all: build test
+
+build:
+	docker build -t q1_monitor .
+
+run:
+	docker run -it --rm -v $(PWD)/config:/app/config q1_monitor
+
+test:
+	python3 -m unittest discover -s tests
+
+clean:
+	rm -f tests/test_config.yaml
+	rm -f config/config.yaml

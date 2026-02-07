@@ -1,0 +1,8 @@
+printer:
+  ip: "YOUR_PRINTER_IP_ADDRESS" # e.g., "192.168.1.100"
+  port: 7125 # Default Moonraker port
+  api_key: "YOUR_MOONRAKER_API_KEY" # Optional, if Moonraker API requires authentication
+notifier:
+  url: "http://...."
+  token: "the API key to be used for calling the notification service"
+polling_interval_seconds: 30 # How often to check printer status
