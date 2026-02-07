@@ -3,10 +3,10 @@
 all: build test
 
 build:
-	docker build -t q1_monitor .
+	docker build -t printer_monitor .
 
 run:
-	docker run -it --rm -v $(PWD)/config:/app/config q1_monitor
+	docker run -it --rm -v $(PWD)/config:/app/config printer_monitor
 
 test:
 	python3 -m unittest discover -s tests
