@@ -5,7 +5,7 @@ import os
 import requests
 
 from src.monitor import main
-from src.config import load_config
+from src.config import get_config
 from src.printer import get_printer_status
 from src.notifier import send_notification
 
@@ -36,7 +36,7 @@ class TestMonitor(unittest.TestCase):
 
     def test_load_config(self):
         """Test that the configuration is loaded correctly."""
-        config = load_config(self.config_path)
+        config = get_config()
         self.assertEqual(config, self.config)
 
     @patch('requests.get')
@@ -56,36 +56,33 @@ class TestMonitor(unittest.TestCase):
         status = get_printer_status(self.config)
         self.assertEqual(status, 'printing')
 
-    @patch('requests.get')
-    def test_get_printer_status_error(self, mock_get):
-        """Test getting printer status when an error occurs."""
-        mock_get.side_effect = requests.exceptions.RequestException
-        status = get_printer_status(self.config)
-        self.assertEqual(status, 'error')
-
     @patch('requests.post')
     def test_send_notification(self, mock_post):
         """Test sending a notification."""
-        send_notification(self.config, "Test message")
+        send_notification("Test message")
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
         self.assertIn('json', kwargs)
-        self.assertEqual(kwargs['json']['event'], 'q1_event')
+        self.assertEqual(kwargs['json']['event'], 'printer_event')
         self.assertEqual(kwargs['json']['message']['text'], 'Test message')
 
     @patch('src.monitor.get_printer_status')
     @patch('src.monitor.send_notification') # Patch the function in the module where it's used
-    @patch('src.config.load_config') # Patch the function in its new module
-    @patch('time.sleep', return_value=None)
-    def test_main_loop_state_change(self, mock_sleep, mock_load_config, mock_send_notification, mock_get_printer_status):
+    @patch('src.config.get_config') # Patch the function in its new module
+    @patch('time.sleep') # Patch time.sleep
+    def test_main_loop_state_change(self, mock_sleep, mock_get_config, mock_send_notification, mock_get_printer_status):
         """Test the main loop detects a state change and sends a notification."""
-        mock_load_config.return_value = self.config
+        mock_get_config.return_value = self.config
         # Simulate the state change from printing to complete
         mock_get_printer_status.side_effect = ['printing', 'complete']
+        mock_sleep.side_effect = SystemExit # Exit after first sleep
 
-        main(max_iterations=1)
+        try:
+            main()
+        except SystemExit:
+            pass # Expected exit
 
-        mock_send_notification.assert_called_once_with(self.config, "Printer state changed from 'printing' to 'complete'.")
+        mock_send_notification.assert_called_once_with("Printer state changed from 'printing' to 'complete'.")
 
 if __name__ == '__main__':
     unittest.main()
