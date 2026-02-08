@@ -54,7 +54,6 @@ def main():
             if last_state == 'printing' and current_state != 'printing':
                 message = f"Printer state changed from 'printing' to '{current_state}'."
                 send_notification(message)
-                logging.info(f"Notification sent: {message}")
 
             last_state = current_state
             time.sleep(polling_interval)
