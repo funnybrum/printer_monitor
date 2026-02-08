@@ -17,18 +17,18 @@ logger = logging.getLogger(__name__)
 
 def _load_model():
     model_cache = pathlib.Path(__file__).parent.resolve().joinpath("../model")
+    model_file = model_cache.joinpath("model_torch.pt")
 
-    try:
-        model_path = hf_hub_download(
+    if not os.path.exists(model_file):
+        logger.info(f"Downloading model from huggingface.co...")
+        hf_hub_download(
             repo_id="Javiai/3dprintfails-yolo5vs",
             filename="model_torch.pt",
             local_dir=model_cache,
         )
-        return torch.hub.load('Ultralytics/yolov5', 'custom', model_path, verbose=False)
 
-    except Exception as e:
-        logger.error(f"Error loading ML model: {e}")
-        raise
+    logger.info(f"Loading model from {model_file}")
+    return torch.hub.load('ultralytics/yolov5', 'custom', model_file, verbose=False)
 
 def _detect_issues_process(terminate_event: multiprocessing.Event):
     """

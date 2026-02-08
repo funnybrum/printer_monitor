@@ -1,0 +1,9 @@
+========================================================================
+Third-Party Components used in Printer Monitor
+========================================================================
+
+The following components are included in this project:
+
+1.  **3dprintfails-yolo5vs model (model_torch.pt)**
+    *   Source: Javiai/3dprintfails-yolo5vs from Hugging Face (https://huggingface.co/Javiai/3dprintfails-yolo5vs)
+    *   License: Apache License, Version 2.0
