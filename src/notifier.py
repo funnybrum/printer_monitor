@@ -1,6 +1,6 @@
 import requests
 import logging
-from config import get_config
+from src.config import get_config
 
 def send_notification(message):
     """Sends a notification using the specified service."""

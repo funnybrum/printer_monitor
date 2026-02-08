@@ -1,10 +1,10 @@
 import time
 import logging
 
-from config import get_config
-from printer import get_printer_status
-from notifier import send_notification
-from issue_detector import start_issue_detector_process
+from src.config import get_config
+from src.printer import get_printer_status
+from src.notifier import send_notification
+from src.issue_detector import start_issue_detector_process
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
@@ -12,12 +12,15 @@ _issue_detector_process = None
 _issue_detector_terminate_event = None
 
 def terminate_issue_detector():
+    global _issue_detector_process, _issue_detector_terminate_event
     if _issue_detector_process is not None:
         _issue_detector_terminate_event.set()  # Signal the worker to stop completely
         _issue_detector_process.join(timeout=5)  # Wait for worker to finish gracefully
         if _issue_detector_process.is_alive():
             logging.warning("Issue detector worker process did not terminate gracefully. Terminating forcefully.")
             _issue_detector_process.terminate()
+        _issue_detector_process = None
+        _issue_detector_terminate_event = None
         logging.info("Issue detector process shut down.")
 
 

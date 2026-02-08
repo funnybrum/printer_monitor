@@ -120,7 +120,7 @@ if __name__ == '__main__':
 
     try:
         detector_process, terminate_event = start_issue_detector_process()
-        time.sleep(60) # Run for a fixed duration for testing this simplified model
+        time.sleep(30) # Run for a fixed duration for testing this simplified model
     finally:
         terminate_event.set() # Signal the worker to stop completely
         detector_process.join(timeout=10) # Wait for worker to finish gracefully
