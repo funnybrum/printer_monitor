@@ -17,6 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the application code
 COPY src/ ./src
 COPY config/ ./config
+COPY model/ ./model
 
 # Set the entrypoint
 ENTRYPOINT ["python", "-m", "src.monitor"]
