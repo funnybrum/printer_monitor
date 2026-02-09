@@ -6,7 +6,7 @@ build:
 	docker build -t printer_monitor .
 
 run:
-	docker run -it --rm -v $(PWD)/config:/app/config printer_monitor
+	docker run -it --rm -v $(PWD)/config:/app/config --privileged printer_monitor
 
 test:
 	python3 -m unittest discover -s tests

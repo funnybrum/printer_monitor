@@ -6,7 +6,7 @@ _config = None
 
 def _load_config_from_file(config_path='config/config.yaml'):
     if not os.path.exists(config_path):
-        raise RuntimeError("Configuration file not found at {config_path}")
+        raise RuntimeError(f"Configuration file not found at {config_path}")
 
     with open(config_path, 'r') as f:
         return yaml.safe_load(f)
