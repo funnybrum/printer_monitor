@@ -27,6 +27,9 @@ RUN wget -q -O /tmp/tmp.deb https://github.com/intel/compute-runtime/releases/do
   && dpkg -i /tmp/tmp.deb \
   && rm /tmp/tmp.deb
 
+# Set the correct timezone
+RUN ln -snf /usr/share/zoneinfo/Europe/Sofia /etc/localtime && echo Europe/Sofia > /etc/timezone
+
 WORKDIR /app
 
 # 1. Create the virtual environment
