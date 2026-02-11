@@ -1,20 +1,31 @@
-import requests
 import logging
+import requests
+import uuid
+
 from src.config import get_config
 
-def send_notification(message):
-    """Sends a notification using the specified service."""
+
+def send_notification(message, image=None, event_type='printer_event'):
+    service_url = get_config()['notifier']['url']
+    auth_token = get_config()['notifier']['token']
+
     payload = {
-        'event': 'printer_event',
+        'event': event_type,
         'message': {
             'text': message,
         }
     }
-    service_url = get_config()['notifier']['url']
-    auth_token = get_config()['notifier']['token']
-    push_url = f"{service_url}/push?auth_token={auth_token}"
+
+    if image:
+        image_name = "%s.jpg" % str(uuid.uuid4())
+        upload_url = "%s/image?auth_token=%s" % (service_url, auth_token)
+        requests.put(upload_url, files={image_name: image})
+
+        payload['message']['image'] = image_name
+        payload['message']['thumbnail'] = image_name
+
+    push_url = "%s/push?auth_token=%s" % (service_url, auth_token)
     try:
         requests.post(push_url, json=payload)
-        logging.info(f"Sent notification: {message}")
     except requests.exceptions.RequestException as e:
-        logging.error(f"Failed to send notification: {e}")
+        logging.exception(f"Failed to send notification {payload}.")
