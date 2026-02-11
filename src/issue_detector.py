@@ -113,7 +113,7 @@ def _detect_issues_process(terminate_event: multiprocessing.Event):
     _, _, input_height, input_width = input_layer.shape
 
     cap = None
-    # Inference reduced to 1 per 5 seconds to reduce CPU load.
+    # Inference reduced to 1 per second to reduce CPU load.
     last_inference_time = 0
 
     # Issues reported once per 60 seconds to avoid constant spam.
@@ -147,7 +147,7 @@ def _detect_issues_process(terminate_event: multiprocessing.Event):
                 time.sleep(5)
                 continue
 
-            if current_time - last_inference_time >= 5: # Process frame every 5 seconds
+            if current_time - last_inference_time >= 1: # Process frame every second
                 # Pre-process frame for OpenVINO model
                 # 1. Resize to model input size (input_width, input_height)
                 resized_frame = cv2.resize(frame, (input_width, input_height))

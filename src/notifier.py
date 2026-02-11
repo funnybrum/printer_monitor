@@ -27,5 +27,5 @@ def send_notification(message, image=None, event_type='printer_event'):
     push_url = "%s/push?auth_token=%s" % (service_url, auth_token)
     try:
         requests.post(push_url, json=payload)
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException:
         logging.exception(f"Failed to send notification {payload}.")
