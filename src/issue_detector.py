@@ -8,7 +8,7 @@ import numpy as np
 from openvino import Core, Layout
 
 from src.config import get_config
-from src.notifier import send_notification # Import send_notification
+from src.notifier import send_notification
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -77,6 +77,7 @@ def _pre_process_detection_results(detection_results):
             filtered_detections.append({
                 "name": class_name_retained,
                 "confidence": confidence_retained,
+                "box": boxes[i]
             })
 
     return filtered_detections
@@ -166,16 +167,63 @@ def _detect_issues_process(terminate_event: multiprocessing.Event):
                 # 6. Pre-process detection results
                 filtered_detections = _pre_process_detection_results(results_ov[0])
 
-                # 7. Sends notifications
+                annotated_frame = frame.copy()
+                original_height, original_width = frame.shape[:2]
+
+                detection_messages = []
+
                 for detection in filtered_detections:
                     class_name = detection['name']
                     confidence = detection['confidence']
+                    box = detection['box']
 
-                    message = f"Detected '{class_name}' with confidence {confidence:.2f}"
-                    logger.info(f"{message}")
-                    if current_time - last_issue_reported_time >= 60:  # Limit to 1 message per minute.
-                        send_notification(message)
+                    # Convert center_x, center_y, w, h to x_min, y_min, x_max, y_max
+                    center_x, center_y, w, h = box
+                    x_min = int((center_x - w / 2) * original_width / input_width)
+                    y_min = int((center_y - h / 2) * original_height / input_height)
+                    x_max = int((center_x + w / 2) * original_width / input_width)
+                    y_max = int((center_y + h / 2) * original_height / input_height)
+
+                    # Draw rectangle
+                    color = (0, 255, 0) # Green color for bounding box
+                    cv2.rectangle(annotated_frame, (x_min, y_min), (x_max, y_max), color, 2)
+
+                    # Prepare text for class name and confidence
+                    text = f"{class_name} {confidence:.2f}"
+                    font = cv2.FONT_HERSHEY_SIMPLEX
+                    font_scale = 0.7
+                    font_thickness = 2
+                    text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+
+                    # Position text below the bounding box
+                    text_x = x_min
+                    text_y = y_max + text_size[1] + 5 # 5 pixels padding below the box
+
+                    # Ensure text is within frame bounds
+                    if text_y > original_height:
+                        text_y = y_min - 5 # If it goes off screen, place above the box
+                        if text_y < 0:
+                            text_y = y_min + text_size[1] + 5 # Fallback if above also goes off
+
+                    if text_x + text_size[0] > original_width:
+                        text_x = original_width - text_size[0]
+
+                    cv2.putText(annotated_frame, text, (text_x, text_y), font, font_scale, color, font_thickness)
+                    detection_messages.append(f"'{class_name}' with confidence {confidence:.2f}")
+
+                if detection_messages and current_time - last_issue_reported_time >= 60:  # Limit to 1 message per minute.
+                    summary_message = "Detected issues: " + ", ".join(detection_messages)
+                    logger.info(f"{summary_message}")
+
+                    # Encode annotated frame to JPEG bytes
+                    ret, buffer = cv2.imencode('.jpg', annotated_frame)
+                    if ret:
+                        image_bytes = buffer.tobytes()
+                        send_notification(summary_message, image=image_bytes)
                         last_issue_reported_time = current_time
+                    else:
+                        logger.error("Failed to encode annotated image to JPEG.")
+
                 last_inference_time = current_time
 
             time.sleep(0.1)
