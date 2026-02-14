@@ -20,12 +20,14 @@ MODEL_CLASS_NAMES = {
     2: 'part',
     3: 'spaghetti'
 }
+DETECTION_AREA_OF_INTEREST = get_config()['issue_detector']['detection_area_of_interest']
 
-def _pre_process_detection_results(detection_results):
+def _pre_process_detection_results(detection_results, original_width, original_height, input_width, input_height):
     """
-    1. Process detections and apply the thresholds
-    2. Apply non-maximum suppression
-    3. Provide simple list of (class_name, confidence_score) pairs as result.
+    1. Filter detections based on the pre-defined detection area of interest.
+    2. Process detections and apply the thresholds.
+    3. Apply non-maximum suppression.
+    4. Provide a list of {class name, confidence and bounding box} for the detections.
     """
     boxes = []
     confidences = []
@@ -38,7 +40,8 @@ def _pre_process_detection_results(detection_results):
         # (center_x, center_y, w, h, objectness_score, class_0_score, class_1_score, class_2_score, ...)
         # Score for "spaghetti" would be class_3_score * objectness_score.
 
-        # Extract objectness score and class confidences
+        # 1. Extract detection data.
+        center_x, center_y, w, h = detection[0:4]
         objectness_score = detection[4]
         class_confidences = detection[5:]
 
@@ -46,24 +49,42 @@ def _pre_process_detection_results(detection_results):
         class_id_raw = np.argmax(class_confidences)
         max_class_confidence = class_confidences[class_id_raw]
 
+        # 2. Check if this is object of interest and is it passing the confidence thresholds
+
         # Combine objectness and class confidence for the final confidence score
         confidence = objectness_score * max_class_confidence
-
         class_name = MODEL_CLASS_NAMES.get(class_id_raw, f"unknown_class_{class_id_raw}")
 
         # Confidence score as specified or 1 to filter out objects we don't care about.
         threshold = CONFIDENCE_THRESHOLDS.get(class_name, 1.0)
 
-        if confidence > threshold:
-            boxes.append(detection[0:4])
-            confidences.append(float(confidence))
-            class_ids.append(class_id_raw)
+        if confidence < threshold:
+            # Not passing the thresholds, ignore.
+            continue
 
-    # Apply Non-Maximum Suppression
+        # 3. Convert detection coordinates to image coordinates.
+        x_min = int((center_x - w / 2) * original_width / input_width)
+        y_min = int((center_y - h / 2) * original_height / input_height)
+        x_max = int((center_x + w / 2) * original_width / input_width)
+        y_max = int((center_y + h / 2) * original_height / input_height)
+
+        # 4. Check if the detection center is in the area of interest for detections.
+        detection_center_x = (x_min + x_max) / 2
+        detection_center_y = (y_min + y_max) / 2
+
+        aoi_x_min, aoi_y_min, aoi_x_max, aoi_y_max = DETECTION_AREA_OF_INTEREST
+        if not (aoi_x_min <= detection_center_x <= aoi_x_max and aoi_y_min <= detection_center_y <= aoi_y_max):
+            # Outside the area of interest.
+            continue
+
+        # 5. Store detection for next steps.
+        boxes.append([x_min, y_min, x_max, y_max])
+        confidences.append(float(confidence))
+        class_ids.append(class_id_raw)
+
+    # 6. Apply Non-Maximum Suppression
     NMS_IOU_THRESHOLD = 0.4
-
-    # The confidence score criteria was already applied above
-    NMS_SCORE_THRESHOLD = 0
+    NMS_SCORE_THRESHOLD = 0  # The confidence score criteria was already applied
 
     indices = cv2.dnn.NMSBoxes(boxes, confidences, NMS_SCORE_THRESHOLD, NMS_IOU_THRESHOLD)
 
@@ -165,24 +186,17 @@ def _detect_issues_process(terminate_event: multiprocessing.Event):
                 results_ov = compiled_model([input_frame])[output_layer]
 
                 # 6. Pre-process detection results
-                filtered_detections = _pre_process_detection_results(results_ov[0])
+                original_height, original_width = frame.shape[:2]
+                filtered_detections = _pre_process_detection_results(results_ov[0], original_width, original_height, input_width, input_height)
 
                 annotated_frame = frame.copy()
-                original_height, original_width = frame.shape[:2]
 
                 detection_messages = []
 
                 for detection in filtered_detections:
                     class_name = detection['name']
                     confidence = detection['confidence']
-                    box = detection['box']
-
-                    # Convert center_x, center_y, w, h to x_min, y_min, x_max, y_max
-                    center_x, center_y, w, h = box
-                    x_min = int((center_x - w / 2) * original_width / input_width)
-                    y_min = int((center_y - h / 2) * original_height / input_height)
-                    x_max = int((center_x + w / 2) * original_width / input_width)
-                    y_max = int((center_y + h / 2) * original_height / input_height)
+                    x_min, y_min, x_max, y_max = detection['box']
 
                     # Draw rectangle
                     color = (0, 255, 0) # Green color for bounding box
