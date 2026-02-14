@@ -24,10 +24,10 @@ DETECTION_AREA_OF_INTEREST = get_config()['issue_detector']['detection_area_of_i
 
 def _pre_process_detection_results(detection_results, original_width, original_height, input_width, input_height):
     """
-    1. Filter detections based on the pre-defined detection area of interest.
-    2. Process detections and apply the thresholds.
-    3. Apply non-maximum suppression.
-    4. Provide a list of {class name, confidence and bounding box} for the detections.
+    1. Process detections and apply the thresholds.
+    2. Apply non-maximum suppression.
+    3. Provide a list of {class name, confidence and bounding box} for the detections.
+    4. Filter detections based on the pre-defined detection area of interest.
     """
     boxes = []
     confidences = []
@@ -68,21 +68,12 @@ def _pre_process_detection_results(detection_results, original_width, original_h
         x_max = int((center_x + w / 2) * original_width / input_width)
         y_max = int((center_y + h / 2) * original_height / input_height)
 
-        # 4. Check if the detection center is in the area of interest for detections.
-        detection_center_x = (x_min + x_max) / 2
-        detection_center_y = (y_min + y_max) / 2
-
-        aoi_x_min, aoi_y_min, aoi_x_max, aoi_y_max = DETECTION_AREA_OF_INTEREST
-        if not (aoi_x_min <= detection_center_x <= aoi_x_max and aoi_y_min <= detection_center_y <= aoi_y_max):
-            # Outside the area of interest.
-            continue
-
-        # 5. Store detection for next steps.
+        # 4. Store detection for next steps.
         boxes.append([x_min, y_min, x_max, y_max])
         confidences.append(float(confidence))
         class_ids.append(class_id_raw)
 
-    # 6. Apply Non-Maximum Suppression
+    # 5. Apply Non-Maximum Suppression
     NMS_IOU_THRESHOLD = 0.4
     NMS_SCORE_THRESHOLD = 0  # The confidence score criteria was already applied
 
@@ -101,7 +92,22 @@ def _pre_process_detection_results(detection_results, original_width, original_h
                 "box": boxes[i]
             })
 
-    return filtered_detections
+    # 6. Filter out detection that are not in the area of interest. Not the optimal approach if done last, but enables
+    # logging for filtered out detections.
+    detections_of_interest = []
+    aoi_x_min, aoi_y_min, aoi_x_max, aoi_y_max = DETECTION_AREA_OF_INTEREST
+
+    for detection in filtered_detections:
+        x_min, y_min, x_max, y_max = detection['box']
+        detection_center_x = (x_min + x_max) / 2
+        detection_center_y = (y_min + y_max) / 2
+
+        if aoi_x_min <= detection_center_x <= aoi_x_max and aoi_y_min <= detection_center_y <= aoi_y_max:
+            detections_of_interest.append(detection)
+        else:
+            logger.info(f"Skipping {detection['name']} detection at {(detection_center_x, detection_center_y)}")
+
+    return detections_of_interest
 
 
 def _detect_issues_process(terminate_event: multiprocessing.Event):
