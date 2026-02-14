@@ -19,7 +19,11 @@ def send_notification(message, image=None, event_type='printer_event'):
     if image:
         image_name = "%s.jpg" % str(uuid.uuid4())
         upload_url = "%s/image?auth_token=%s" % (service_url, auth_token)
-        requests.put(upload_url, files={image_name: image})
+        try:
+            requests.put(upload_url, files={image_name: image})
+        except requests.exceptions.RequestException:
+            logging.exception(f"Failed to upload notification image.")
+            return
 
         payload['message']['image'] = image_name
         payload['message']['thumbnail'] = image_name
