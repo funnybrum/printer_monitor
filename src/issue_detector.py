@@ -231,7 +231,7 @@ def _detect_issues_process(terminate_event: multiprocessing.Event):
                     cv2.putText(annotated_frame, text, (text_x, text_y), font, font_scale, color, font_thickness)
                     detection_messages.append(f"'{class_name}' with confidence {confidence:.2f}")
 
-                if detection_messages and current_time - last_issue_reported_time >= 60:  # Limit to 1 message per minute.
+                if detection_messages and current_time - last_issue_reported_time >= 900:  # Limit to 1 message per 15 minutes.
                     summary_message = "Detected issues: " + ", ".join(detection_messages)
                     logger.info(f"{summary_message}")
 
