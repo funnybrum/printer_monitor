@@ -155,7 +155,7 @@ def _detect_issues_process(terminate_event: multiprocessing.Event):
                 cap = cv2.VideoCapture(stream_url)
                 if not cap.isOpened():
                     logger.error(f"Could not open video stream from {stream_url}. Retrying in 5 seconds...")
-                    if current_time - last_issue_reported_time >= 60:
+                    if current_time - last_issue_reported_time >= 600:
                         send_notification("Failed to open video stream")
                         last_issue_reported_time = current_time
                     time.sleep(5) # Wait before retrying
