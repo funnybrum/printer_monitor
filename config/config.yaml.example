@@ -12,3 +12,4 @@ issue_detector:
   confidence_thresholds:
     error: 0.75 # Example threshold for 'error' class
     spaghetti: 0.60 # Example threshold for 'spaghetti' class
+  detection_area_of_interest: [100, 120, 590, 320]  # Filter out detections that are not in this rectangle. Reduce false positives.

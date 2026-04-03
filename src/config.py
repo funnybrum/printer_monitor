@@ -20,7 +20,7 @@ def get_config():
     if _config is None:
         try:
             _config = _load_config_from_file()
-        except:
+        except Exception:
             logging.exception("Failed to load configuration")
             raise
     return _config

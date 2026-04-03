@@ -47,7 +47,7 @@ def main():
                     # Check if the issue detector process is alive
                     if not _issue_detector_process.is_alive():
                         logging.error("Issue detector process died unexpectedly.")
-                        detector_process = None
+                        _issue_detector_process = None
             elif current_state != 'printing' and _issue_detector_process is not None:
                 terminate_issue_detector()
 
